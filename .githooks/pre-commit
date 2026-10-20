@@ -1,0 +1,11 @@
+#!/bin/sh
+# Blocks a commit that touches app/ unless the project checks pass
+# (typecheck, lint, formatting, tests). Notes-only commits skip it.
+if git diff --cached --name-only | grep -q '^app/'; then
+  echo "Running checks before commit (npm run check)..."
+  if ! (cd app && npm run check); then
+    echo ""
+    echo "Checks failed, so the commit was blocked. Fix the problem above and commit again."
+    exit 1
+  fi
+fi
