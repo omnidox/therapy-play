@@ -1,10 +1,11 @@
-// Slows down someone guessing the host passcode. Held in memory only; nothing is stored.
+// Slows down repeated attempts: wrong passcode guesses, or room creation on an open demo.
+// Held in memory only; nothing is stored.
 
 type Options = { perKeyMax: number; globalMax: number; windowMs: number };
 
 const DEFAULTS: Options = { perKeyMax: 5, globalMax: 30, windowMs: 15 * 60 * 1000 };
 
-export class FailureLimiter {
+export class AttemptLimiter {
   private byKey = new Map<string, number[]>();
   private all: number[] = [];
 
@@ -26,7 +27,7 @@ export class FailureLimiter {
     return waits.length === 0 ? 0 : Math.max(1, Math.ceil(Math.max(...waits) / 1000));
   }
 
-  recordFailure(key: string): void {
+  record(key: string): void {
     const own = this.recent(this.byKey.get(key) ?? []);
     own.push(this.now());
     this.byKey.set(key, own);

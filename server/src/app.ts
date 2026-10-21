@@ -10,7 +10,7 @@ import type {
   ServerMessage,
 } from "@therapy-play/shared";
 import { RoomStore } from "./rooms.js";
-import { FailureLimiter } from "./throttle.js";
+import { AttemptLimiter } from "./throttle.js";
 
 type Socket = { send(data: string): void; close(): void };
 
@@ -20,6 +20,9 @@ function sameSecret(given: string, expected: string): boolean {
   const b = createHash("sha256").update(expected).digest();
   return timingSafeEqual(a, b);
 }
+
+// The most rooms alive at once. It keeps a busy or abused site from filling the server's memory.
+const DEFAULT_MAX_ROOMS = 200;
 
 const SWEEP_EVERY_MS = 60 * 1000;
 const HEARTBEAT_MS = 20 * 1000; // how often a silent connection is checked
@@ -33,12 +36,19 @@ export async function buildApp(
     clientDir?: string;
     demo?: boolean;
     hostPasscode?: string;
-    limiter?: FailureLimiter;
+    limiter?: AttemptLimiter; // wrong passcode guesses
+    createLimiter?: AttemptLimiter; // room creation on an open demo
+    maxRooms?: number;
   } = {},
 ) {
   // trustProxy: behind a host's proxy, req.ip is the visitor's address (used to slow down guessing).
   const app = Fastify({ logger: false, trustProxy: true });
-  const limiter = options.limiter ?? new FailureLimiter();
+  const limiter = options.limiter ?? new AttemptLimiter();
+  // An open demo (no passcode) lets one address create only a few rooms in a while.
+  const createLimiter =
+    options.createLimiter ??
+    new AttemptLimiter(Date.now, { perKeyMax: 10, globalMax: 100, windowMs: 15 * 60 * 1000 });
+  const maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
   await app.register(websocket);
 
   // Small safety headers on every web response. no-referrer keeps a room link out of
@@ -94,7 +104,8 @@ export async function buildApp(
   };
 
   // Only the host may create a room. When a passcode is set, it must come with the request;
-  // wrong guesses are counted per address and slowed down after a few.
+  // wrong guesses are counted per address and slowed down after a few. Room creation is also
+  // capped overall, and limited per address on an open demo.
   app.post(
     "/rooms",
     async (req, reply): Promise<CreateRoomResponse | { error: string; retryAfter?: number }> => {
@@ -108,10 +119,24 @@ export async function buildApp(
         }
         const given = (req.body as { passcode?: unknown } | undefined)?.passcode;
         if (typeof given !== "string" || !sameSecret(given, options.hostPasscode)) {
-          limiter.recordFailure(req.ip);
+          limiter.record(req.ip);
           return reply.code(401).send({ error: "passcode" });
         }
         limiter.reset(req.ip);
+      }
+      if (store.count() >= maxRooms) {
+        return reply.code(503).send({ error: "busy" });
+      }
+      // Without a passcode (an open demo), also limit how many rooms one address can create.
+      if (options.hostPasscode === undefined && options.demo === true) {
+        const wait = createLimiter.blockedFor(req.ip);
+        if (wait > 0) {
+          return reply
+            .code(429)
+            .header("Retry-After", String(wait))
+            .send({ error: "too_many_rooms", retryAfter: wait });
+        }
+        createLimiter.record(req.ip);
       }
       return store.create();
     },

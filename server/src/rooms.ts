@@ -84,6 +84,11 @@ export class RoomStore {
     return { code: room.code, hostKey: room.hostKey };
   }
 
+  // How many rooms exist right now.
+  count(): number {
+    return this.rooms.size;
+  }
+
   has(code: string): boolean {
     return this.rooms.has(code);
   }

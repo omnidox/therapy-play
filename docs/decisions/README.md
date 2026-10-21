@@ -14,3 +14,4 @@ Short notes on why the main choices were made. Each has the situation, the decis
 | [0008](0008-accessible-pop-ups.md)                | Pop-ups are accessible, and Escape is the safe action   |
 | [0009](0009-one-program-serves-page-and-game.md)  | One program serves the page and the game                |
 | [0010](0010-host-passcode.md)                     | Only the host can create rooms, with a passcode         |
+| [0011](0011-limits-on-an-open-demo.md)            | Limits on rooms, especially on an open demo             |

@@ -6,6 +6,7 @@ import WebSocket from "ws";
 import type { FastifyInstance } from "fastify";
 import type { ClientMessage, CreateRoomResponse, ServerMessage } from "@therapy-play/shared";
 import { buildApp } from "./app.js";
+import { AttemptLimiter } from "./throttle.js";
 
 let app: FastifyInstance;
 let port: number;
@@ -403,5 +404,65 @@ test("repeated wrong guesses are slowed down, even if the next one is right", as
     expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
   } finally {
     await locked.close();
+  }
+});
+
+// Starts a throwaway server and returns a helper that creates rooms on it.
+async function startServer(options: Parameters<typeof buildApp>[1]) {
+  const server = await buildApp(undefined, options);
+  await server.listen({ port: 0, host: "127.0.0.1" });
+  const base = `http://127.0.0.1:${(server.server.address() as { port: number }).port}`;
+  const create = (body?: unknown) =>
+    fetch(`${base}/rooms`, {
+      method: "POST",
+      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  return { server, base, create };
+}
+
+test("an open demo limits how many rooms one address can create", async () => {
+  const createLimiter = new AttemptLimiter(Date.now, { perKeyMax: 3, globalMax: 50, windowMs: 60_000 });
+  const { server, create } = await startServer({ demo: true, createLimiter });
+  try {
+    for (let i = 0; i < 3; i++) expect((await create()).status).toBe(200);
+    const blocked = await create();
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ error: "too_many_rooms" });
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+  } finally {
+    await server.close();
+  }
+});
+
+test("the per-address room limit does not apply with a passcode, or outside a demo", async () => {
+  const tight = () => new AttemptLimiter(Date.now, { perKeyMax: 1, globalMax: 50, windowMs: 60_000 });
+  const locked = await startServer({
+    demo: true,
+    hostPasscode: "a-long-test-passcode",
+    createLimiter: tight(),
+  });
+  const dev = await startServer({ createLimiter: tight() }); // local development: not a demo
+  try {
+    for (let i = 0; i < 4; i++) {
+      expect((await locked.create({ passcode: "a-long-test-passcode" })).status).toBe(200);
+      expect((await dev.create()).status).toBe(200);
+    }
+  } finally {
+    await locked.server.close();
+    await dev.server.close();
+  }
+});
+
+test("there is a ceiling on live rooms, and a full server says it is busy", async () => {
+  const { server, create } = await startServer({ maxRooms: 2 });
+  try {
+    expect((await create()).status).toBe(200);
+    expect((await create()).status).toBe(200);
+    const busy = await create();
+    expect(busy.status).toBe(503);
+    expect(await busy.json()).toEqual({ error: "busy" });
+  } finally {
+    await server.close();
   }
 });

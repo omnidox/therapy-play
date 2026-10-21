@@ -120,7 +120,17 @@ export function Home({ go = (path: string) => location.assign(path) }: { go?: (p
       }
       if (res.status === 429) {
         const minutes = Math.max(1, Math.ceil(Number(res.headers.get("Retry-After") ?? 60) / 60));
-        setProblem(`Too many tries. Please wait ${minutes} minute${minutes === 1 ? "" : "s"} and try again.`);
+        const wait = `${minutes} minute${minutes === 1 ? "" : "s"}`;
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setProblem(
+          body.error === "too_many_rooms"
+            ? `A lot of rooms were created from your connection. Please wait ${wait} and try again.`
+            : `Too many tries. Please wait ${wait} and try again.`,
+        );
+        return;
+      }
+      if (res.status === 503) {
+        setProblem("The site is busy right now. Please try again in a few minutes.");
         return;
       }
       if (!res.ok) {

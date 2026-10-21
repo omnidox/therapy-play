@@ -108,6 +108,7 @@ This is a description of what the code does, not a compliance statement. It has 
 
 ## Known limits
 
+- **Limits on rooms.** At most 200 rooms at once on any site, and on an open demo one address can create only 10 rooms in 15 minutes (decision record 0011).
 - **One server process.** Rooms are in memory, so running several server copies would split them. This is a deliberate trade-off (see the decision records).
 - **No end-to-end browser tests yet.** The logic and the screens are tested, and the full flow has been checked by hand in a real browser.
 - **Accessibility is partly covered.** Automated scans and keyboard checks are done; colour-contrast scanning in a real browser and testing with a real screen reader are not.

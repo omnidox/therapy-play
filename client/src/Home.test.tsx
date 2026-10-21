@@ -89,3 +89,22 @@ test("if the server asks for a passcode the page did not expect, the field appea
   expect(await screen.findByLabelText("Therapist passcode")).toBeTruthy();
   expect((await screen.findByRole("alert")).textContent).toContain("Enter the passcode");
 });
+
+test("a room-creation limit and a busy server each get their own plain message", async () => {
+  const user = userEvent.setup();
+  stubServer(
+    { demo: true, passcodeRequired: false },
+    { status: 429, body: { error: "too_many_rooms" }, headers: { "Retry-After": "600" } },
+  );
+  const { unmount } = render(<Home go={() => {}} />);
+  await user.click(screen.getByRole("button", { name: "New room" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("rooms were created");
+  expect((await screen.findByRole("alert")).textContent).toContain("10 minutes");
+  unmount();
+  vi.unstubAllGlobals();
+
+  stubServer({ demo: true, passcodeRequired: false }, { status: 503, body: { error: "busy" } });
+  render(<Home go={() => {}} />);
+  await user.click(screen.getByRole("button", { name: "New room" }));
+  expect((await screen.findByRole("alert")).textContent).toContain("busy");
+});
