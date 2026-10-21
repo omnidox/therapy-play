@@ -11,12 +11,12 @@ Where the project stands. Update this at the end of each working session, and fi
 
 ## Checks and deploys
 
-- `npm run check` (typecheck, lint, format, tests) runs on every commit through the pre-commit hook, and on GitHub (CI) for every push. At the last update: 57 server tests and 23 client tests, all passing.
-- A free demo runs on Render, described by `render.yaml` and deployed from the `main` branch. It has `DEMO=1`, so it shows a "made-up content only" banner, and it has no host passcode unless one is set in the Render dashboard. Free instances sleep after 15 idle minutes and wake in about a minute; rooms live in memory, so a restart ends them.
+- `npm run check` (typecheck, lint, format, tests) runs on every commit through the pre-commit hook, and on GitHub (CI) for every push. At the last update: 58 server tests and 23 client tests, all passing.
+- A free demo runs on Render, described by `render.yaml` and deployed from the `main` branch. It has `DEMO=1`, so it shows a "made-up content only" banner, and it has no host passcode (removed on Oct 21 to make development easier), so anyone with the address can create rooms; the banner is the only guard. A real site must still set `HOST_PASSCODE`. Free instances sleep after 15 idle minutes and wake in about a minute; rooms live in memory, so a restart ends them.
 
 ## Ideas for next steps (not started)
 
-- Decide whether to add the demo link to the README, and whether the demo gets a passcode.
+- Decide whether to add the demo link to the README (the demo is open, with no passcode, so a public link lets anyone create rooms).
 - Browser end-to-end tests (for example with Playwright).
 - Colour contrast scan in a real browser and a test with a real screen reader (listed under Known limits in the README).
 - Optional: turn order or "host picks the tile" as a setting; a small turn indicator.
