@@ -11,6 +11,6 @@ services:
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
-        value: "22"
+        value: "22.21.0"
       - key: DEMO
         value: "1"
