@@ -13,3 +13,4 @@ Short notes on why the main choices were made. Each has the situation, the decis
 | [0007](0007-seats-survive-dropped-connections.md) | Seats survive dropped connections and closed browsers   |
 | [0008](0008-accessible-pop-ups.md)                | Pop-ups are accessible, and Escape is the safe action   |
 | [0009](0009-one-program-serves-page-and-game.md)  | One program serves the page and the game                |
+| [0010](0010-host-passcode.md)                     | Only the host can create rooms, with a passcode         |

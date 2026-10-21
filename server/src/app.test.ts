@@ -346,14 +346,62 @@ test("the strict-transport header is sent only when the request came in over htt
 
 test("the config says whether this is a demo site", async () => {
   const normal = await fetch(`http://127.0.0.1:${port}/config`);
-  expect(await normal.json()).toEqual({ demo: false });
+  expect(await normal.json()).toEqual({ demo: false, passcodeRequired: false });
   const demoApp = await buildApp(undefined, { demo: true });
   await demoApp.listen({ port: 0, host: "127.0.0.1" });
   const demoPort = (demoApp.server.address() as { port: number }).port;
   try {
     const res = await fetch(`http://127.0.0.1:${demoPort}/config`);
-    expect(await res.json()).toEqual({ demo: true });
+    expect(await res.json()).toEqual({ demo: true, passcodeRequired: false });
   } finally {
     await demoApp.close();
+  }
+});
+
+test("with a host passcode, only a request carrying it can create a room", async () => {
+  const PASSCODE = "correct-horse-battery";
+  const locked = await buildApp(undefined, { hostPasscode: PASSCODE });
+  await locked.listen({ port: 0, host: "127.0.0.1" });
+  const base = `http://127.0.0.1:${(locked.server.address() as { port: number }).port}`;
+  const create = (body?: unknown) =>
+    fetch(`${base}/rooms`, {
+      method: "POST",
+      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  try {
+    expect(await (await fetch(`${base}/config`)).json()).toEqual({ demo: false, passcodeRequired: true });
+    expect((await create()).status).toBe(401); // no passcode at all
+    expect((await create({ passcode: "wrong-guess-here" })).status).toBe(401);
+    expect((await create({ passcode: 12345 })).status).toBe(401); // wrong type
+    const ok = await create({ passcode: PASSCODE });
+    expect(ok.status).toBe(200);
+    expect(((await ok.json()) as CreateRoomResponse).code.length).toBeGreaterThan(20);
+    // Joining and playing in a room that exists does not need the passcode.
+    const { code } = (await (await create({ passcode: PASSCODE })).json()) as CreateRoomResponse;
+    expect((await fetch(`${base}/rooms/${code}`)).status).toBe(200);
+  } finally {
+    await locked.close();
+  }
+});
+
+test("repeated wrong guesses are slowed down, even if the next one is right", async () => {
+  const PASSCODE = "correct-horse-battery";
+  const locked = await buildApp(undefined, { hostPasscode: PASSCODE });
+  await locked.listen({ port: 0, host: "127.0.0.1" });
+  const base = `http://127.0.0.1:${(locked.server.address() as { port: number }).port}`;
+  const attempt = (passcode: string) =>
+    fetch(`${base}/rooms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passcode }),
+    });
+  try {
+    for (let i = 0; i < 5; i++) expect((await attempt("nope-nope-nope")).status).toBe(401);
+    const blocked = await attempt(PASSCODE); // right passcode, but too many recent misses
+    expect(blocked.status).toBe(429);
+    expect(Number(blocked.headers.get("retry-after"))).toBeGreaterThan(0);
+  } finally {
+    await locked.close();
   }
 });

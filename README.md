@@ -20,6 +20,7 @@ The host's screen (a game in progress with three players and scoring on), then a
 ## What it does
 
 - **Rooms with a link.** The host creates a room and gets an unguessable link. There are no accounts. Players type no name unless they want to.
+- **Only the host creates rooms.** A real site needs a host passcode (`HOST_PASSCODE`) and refuses to start without one; guesses are rate limited. Players never need it.
 - **Waiting room.** Each new screen waits until the host admits it (this can be switched off).
 - **Up to 8 players.** The host picks the number (1 to 8). One screen can hold up to 4 players, for example a parent and child sharing a phone. The host can play too. Players can rename themselves.
 - **A live board.** Any admitted player can open a tile. Questions and answers are sent only when a tile is opened. **Show answer**, **Done** (the tile is used up) and **Put back** (it stays available) work for everyone.
@@ -66,6 +67,8 @@ npm ci
 npm run build   # builds the page and bundles the server
 npm start       # one program: serves the page, the game and /health
 ```
+
+**Settings** (environment variables): `PORT` (default 3001); `HOST_PASSCODE` (at least 12 characters; required unless this is a demo); `DEMO=1` (demo banner, and no passcode needed). The dev scripts run with `--allow-open`, so local development needs no passcode. To try the passcode locally: `HOST_PASSCODE=a-long-test-passcode npm start` (Git Bash) or `$env:HOST_PASSCODE="a-long-test-passcode"; npm start` (PowerShell).
 
 The port comes from the `PORT` setting (default 3001). Any computer or hosting service with Node.js 22 can run it this way. See [docs/decisions/0009](docs/decisions/0009-one-program-serves-page-and-game.md). Rooms live in memory, so run a single copy.
 

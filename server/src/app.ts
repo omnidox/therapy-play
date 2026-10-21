@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { sep } from "node:path";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
@@ -10,8 +10,16 @@ import type {
   ServerMessage,
 } from "@therapy-play/shared";
 import { RoomStore } from "./rooms.js";
+import { FailureLimiter } from "./throttle.js";
 
 type Socket = { send(data: string): void; close(): void };
+
+// Compares secrets without leaking, through timing, how much of a guess was right.
+function sameSecret(given: string, expected: string): boolean {
+  const a = createHash("sha256").update(given).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
 
 const SWEEP_EVERY_MS = 60 * 1000;
 const HEARTBEAT_MS = 20 * 1000; // how often a silent connection is checked
@@ -20,9 +28,17 @@ const HEARTBEAT_MS = 20 * 1000; // how often a silent connection is checked
 export async function buildApp(
   store: RoomStore = new RoomStore(),
   // clientDir: the built page (client/dist). When set, this one program serves the page too.
-  options: { heartbeatMs?: number; clientDir?: string; demo?: boolean } = {},
+  options: {
+    heartbeatMs?: number;
+    clientDir?: string;
+    demo?: boolean;
+    hostPasscode?: string;
+    limiter?: FailureLimiter;
+  } = {},
 ) {
-  const app = Fastify({ logger: false });
+  // trustProxy: behind a host's proxy, req.ip is the visitor's address (used to slow down guessing).
+  const app = Fastify({ logger: false, trustProxy: true });
+  const limiter = options.limiter ?? new FailureLimiter();
   await app.register(websocket);
 
   // Small safety headers on every web response. no-referrer keeps a room link out of
@@ -42,7 +58,10 @@ export async function buildApp(
   app.get("/health", async () => ({ status: "ok" }));
 
   // Tells the page whether this is a demo site, so it can show a "made-up content only" banner.
-  app.get("/config", async () => ({ demo: options.demo === true }));
+  app.get("/config", async () => ({
+    demo: options.demo === true,
+    passcodeRequired: options.hostPasscode !== undefined,
+  }));
 
   const sockets = new Map<string, Map<string, Socket>>(); // room code -> connId -> socket
 
@@ -74,7 +93,29 @@ export async function buildApp(
     sockets.delete(code);
   };
 
-  app.post("/rooms", async (): Promise<CreateRoomResponse> => store.create());
+  // Only the host may create a room. When a passcode is set, it must come with the request;
+  // wrong guesses are counted per address and slowed down after a few.
+  app.post(
+    "/rooms",
+    async (req, reply): Promise<CreateRoomResponse | { error: string; retryAfter?: number }> => {
+      if (options.hostPasscode !== undefined) {
+        const wait = limiter.blockedFor(req.ip);
+        if (wait > 0) {
+          return reply
+            .code(429)
+            .header("Retry-After", String(wait))
+            .send({ error: "too_many_attempts", retryAfter: wait });
+        }
+        const given = (req.body as { passcode?: unknown } | undefined)?.passcode;
+        if (typeof given !== "string" || !sameSecret(given, options.hostPasscode)) {
+          limiter.recordFailure(req.ip);
+          return reply.code(401).send({ error: "passcode" });
+        }
+        limiter.reset(req.ip);
+      }
+      return store.create();
+    },
+  );
 
   // Lets the join form cap its player count. Reveals nothing else about a room.
   app.get<{ Params: { code: string } }>("/rooms/:code", async (req, reply): Promise<RoomInfoResponse> => {

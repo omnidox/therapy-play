@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "tsx watch src/main.ts --allow-open",
     "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/main.js --external:fastify --external:@fastify/websocket --external:@fastify/static",
     "start": "node dist/main.js",
-    "start:dev": "tsx src/main.ts",
+    "start:dev": "tsx src/main.ts --allow-open",
     "test": "vitest run"
   },
   "dependencies": {

@@ -14,3 +14,7 @@ services:
         value: "22.21.0"
       - key: DEMO
         value: "1"
+      # For a real (non-demo) site, remove DEMO and add the passcode as a secret that is set in
+      # the Render dashboard, not in this file:
+      #   - key: HOST_PASSCODE
+      #     sync: false

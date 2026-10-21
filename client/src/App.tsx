@@ -5,6 +5,7 @@ import { DemoBanner } from "./DemoBanner";
 import { Editor } from "./Editor";
 import { JoinForm, OwnNames, PlayersPanel } from "./Players";
 import { purgeOldKeys, readKey, saveKey } from "./storage";
+import { useConfig } from "./useConfig";
 import { readSeat, useRoom, type JoinParams } from "./useRoom";
 
 const page: React.CSSProperties = {
@@ -88,21 +89,83 @@ function ReconnectBanner({ show }: { show: boolean }) {
   );
 }
 
-function Home() {
+// The home page. Only the host creates rooms; when the server has a host passcode, it is asked for here.
+export function Home({ go = (path: string) => location.assign(path) }: { go?: (path: string) => void }) {
+  const config = useConfig();
+  const [passcode, setPasscode] = useState("");
   const [busy, setBusy] = useState(false);
-  const start = async () => {
+  const [problem, setProblem] = useState("");
+  const [asked, setAsked] = useState(false); // the server asked for a passcode even though the config did not
+  const needsPasscode = config.passcodeRequired || asked;
+
+  const start = async (event: React.FormEvent) => {
+    event.preventDefault();
     setBusy(true);
-    const res = await fetch("/rooms", { method: "POST" });
-    const { code, hostKey } = (await res.json()) as CreateRoomResponse;
-    saveKey(`hostKey:${code}`, hostKey);
-    location.assign(`/host/${code}`);
+    setProblem("");
+    try {
+      const res = await fetch(
+        "/rooms",
+        needsPasscode
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ passcode }),
+            }
+          : { method: "POST" },
+      );
+      if (res.status === 401) {
+        setAsked(true);
+        setProblem(passcode ? "That passcode is not right." : "Enter the passcode to create a room.");
+        return;
+      }
+      if (res.status === 429) {
+        const minutes = Math.max(1, Math.ceil(Number(res.headers.get("Retry-After") ?? 60) / 60));
+        setProblem(`Too many tries. Please wait ${minutes} minute${minutes === 1 ? "" : "s"} and try again.`);
+        return;
+      }
+      if (!res.ok) {
+        setProblem("Could not create a room. Please try again.");
+        return;
+      }
+      const { code, hostKey } = (await res.json()) as CreateRoomResponse;
+      saveKey(`hostKey:${code}`, hostKey);
+      go(`/host/${code}`);
+    } catch {
+      setProblem("Could not reach the server. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
+
   return (
     <main style={page}>
       <h1>therapy-play</h1>
-      <button style={button} onClick={start} disabled={busy}>
-        New room
-      </button>
+      <form onSubmit={start}>
+        {needsPasscode && (
+          <p>
+            <label>
+              Therapist passcode
+              <br />
+              <input
+                type="password"
+                name="passcode"
+                autoComplete="current-password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                style={{ fontSize: 18, padding: 8, width: "100%", boxSizing: "border-box" }}
+              />
+            </label>
+          </p>
+        )}
+        {problem && (
+          <p role="alert" className="privacy-note">
+            {problem}
+          </p>
+        )}
+        <button type="submit" style={button} disabled={busy || (needsPasscode && passcode === "")}>
+          New room
+        </button>
+      </form>
     </main>
   );
 }
