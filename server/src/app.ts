@@ -20,7 +20,7 @@ const HEARTBEAT_MS = 20 * 1000; // how often a silent connection is checked
 export async function buildApp(
   store: RoomStore = new RoomStore(),
   // clientDir: the built page (client/dist). When set, this one program serves the page too.
-  options: { heartbeatMs?: number; clientDir?: string } = {},
+  options: { heartbeatMs?: number; clientDir?: string; demo?: boolean } = {},
 ) {
   const app = Fastify({ logger: false });
   await app.register(websocket);
@@ -40,6 +40,9 @@ export async function buildApp(
 
   // A host can ask this to see that the program is alive.
   app.get("/health", async () => ({ status: "ok" }));
+
+  // Tells the page whether this is a demo site, so it can show a "made-up content only" banner.
+  app.get("/config", async () => ({ demo: options.demo === true }));
 
   const sockets = new Map<string, Map<string, Socket>>(); // room code -> connId -> socket
 
@@ -95,7 +98,12 @@ export async function buildApp(
     app.setNotFoundHandler((req, reply) => {
       const path = req.url.split("?")[0];
       const lastPart = path.split("/").pop() ?? "";
-      const isPage = req.method === "GET" && !lastPart.includes(".") && !path.startsWith("/rooms");
+      const isPage =
+        req.method === "GET" &&
+        !lastPart.includes(".") &&
+        !path.startsWith("/rooms") &&
+        path !== "/config" &&
+        path !== "/health";
       if (isPage) return reply.sendFile("index.html");
       return reply.code(404).send({ error: "not found" });
     });

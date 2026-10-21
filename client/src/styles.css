@@ -208,3 +208,16 @@ textarea:focus-visible {
   border-radius: 4px;
   font-size: 15px;
 }
+
+/* Shown on demo sites only. */
+.demo-banner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0;
+  padding: 8px 12px;
+  background: #fff3c4;
+  border-bottom: 2px solid #e0c04a;
+  font-size: 15px;
+  text-align: center;
+}

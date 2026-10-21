@@ -69,6 +69,10 @@ npm start       # one program: serves the page, the game and /health
 
 The port comes from the `PORT` setting (default 3001). Any computer or hosting service with Node.js 22 can run it this way. See [docs/decisions/0009](docs/decisions/0009-one-program-serves-page-and-game.md). Rooms live in memory, so run a single copy.
 
+## Deploy a demo (Render, free)
+
+`render.yaml` describes a demo service. In Render: **New > Blueprint**, pick this repository, and apply. It builds with `npm ci && npm run build`, starts with `npm start`, checks `/health`, and sets `DEMO=1`, which puts a "made-up content only" banner on every page. On the free plan the service sleeps after 15 idle minutes and takes about a minute to wake, and rooms (which live in memory) end when it sleeps or restarts. Use it with made-up content only.
+
 ## Tests and checks
 
 ```
@@ -79,7 +83,7 @@ runs, in order: the TypeScript check, ESLint, a Prettier format check, and all t
 
 - **Server tests** cover the room rules (admitting, seats, scoring permissions, timeouts), the game rules, board validation, and real WebSocket conversations between a host and several players, including a connection that stops answering.
 - **Client tests** cover focus handling, Escape behaviour and the editor, and run an automated accessibility scan (axe) on each screen.
-- A pre-commit hook in `.githooks/` runs the same check and blocks a commit that fails it. Turn it on once per clone with `git config core.hooksPath .githooks`, run from the folder that contains `.githooks`.
+- A pre-commit hook in `.githooks/` runs the same check and blocks a commit that fails it. Turn it on once per clone with `git config core.hooksPath .githooks`.
 
 ## Project layout
 

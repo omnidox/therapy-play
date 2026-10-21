@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CreateRoomResponse } from "@therapy-play/shared";
 import { Board } from "./Board";
+import { DemoBanner } from "./DemoBanner";
 import { Editor } from "./Editor";
 import { JoinForm, OwnNames, PlayersPanel } from "./Players";
 import { purgeOldKeys, readKey, saveKey } from "./storage";
@@ -292,7 +293,13 @@ function ChildView({ code }: { code: string }) {
 
 export function App() {
   const path = location.pathname.split("/").filter(Boolean);
-  if (path[0] === "host" && path[1]) return <HostView code={path[1]} />;
-  if (path[0] === "r" && path[1]) return <ChildView code={path[1]} />;
-  return <Home />;
+  let page = <Home />;
+  if (path[0] === "host" && path[1]) page = <HostView code={path[1]} />;
+  else if (path[0] === "r" && path[1]) page = <ChildView code={path[1]} />;
+  return (
+    <>
+      <DemoBanner />
+      {page}
+    </>
+  );
 }

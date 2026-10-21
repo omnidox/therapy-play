@@ -1,0 +1,16 @@
+# Render "Blueprint": describes the demo service so it can be created in a few clicks.
+# Free plan: the service sleeps after 15 idle minutes and takes about a minute to wake.
+# Rooms live in memory, so a restart or sleep ends them. Use made-up content only.
+services:
+  - type: web
+    name: therapy-play-demo
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DEMO
+        value: "1"

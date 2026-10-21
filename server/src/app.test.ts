@@ -343,3 +343,17 @@ test("the strict-transport header is sent only when the request came in over htt
   });
   expect(viaHost.headers.get("strict-transport-security")).toBe("max-age=31536000");
 });
+
+test("the config says whether this is a demo site", async () => {
+  const normal = await fetch(`http://127.0.0.1:${port}/config`);
+  expect(await normal.json()).toEqual({ demo: false });
+  const demoApp = await buildApp(undefined, { demo: true });
+  await demoApp.listen({ port: 0, host: "127.0.0.1" });
+  const demoPort = (demoApp.server.address() as { port: number }).port;
+  try {
+    const res = await fetch(`http://127.0.0.1:${demoPort}/config`);
+    expect(await res.json()).toEqual({ demo: true });
+  } finally {
+    await demoApp.close();
+  }
+});

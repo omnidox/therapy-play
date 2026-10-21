@@ -9,7 +9,10 @@ const host = process.env.HOST ?? "0.0.0.0";
 const builtPage = fileURLToPath(new URL("../../client/dist", import.meta.url));
 const clientDir = process.env.CLIENT_DIR ?? (existsSync(builtPage) ? builtPage : undefined);
 
-const app = await buildApp(undefined, { clientDir });
+// DEMO=1 marks a site as a demo: the page shows a banner saying to use made-up content only.
+const demo = process.env.DEMO === "1" || process.env.DEMO === "true";
+
+const app = await buildApp(undefined, { clientDir, demo });
 await app.listen({ port, host });
 console.log(`Server listening on port ${port}${clientDir ? " (serving the built page)" : ""}`);
 

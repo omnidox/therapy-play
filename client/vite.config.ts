@@ -9,6 +9,7 @@ export default defineConfig({
     proxy: {
       "/ws": { target: "ws://localhost:3001", ws: true },
       "/rooms": { target: "http://localhost:3001" },
+      "/config": { target: "http://localhost:3001" },
     },
   },
 });
