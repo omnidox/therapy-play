@@ -8,7 +8,7 @@ Anyone who opened the site could press "New room" and become a host. They could 
 
 ## Decision
 
-- The server has a **host passcode**, set as a private setting (`HOST_PASSCODE`) on the host machine. It is never in the code or the repository, and it must be at least 12 characters.
+- The server has a **host passcode**, set as a private setting (`HOST_PASSCODE`) on the host machine. It is never in the code or the repository, and it must be at least 12 characters (6 on a demo site, which has only made-up content).
 - The home page asks for it before creating a room. Players never see this: they use the link the host sends, and joining or playing needs no passcode.
 - The server **fails closed**: a site that is not a demo refuses to start without a passcode. Demo sites (`DEMO=1`) and local development (the dev scripts pass `--allow-open`) may run without one.
 - The check compares the passcode without leaking how much of a guess was right. After 5 wrong guesses from one address in 15 minutes, that address must wait, and a lower overall limit covers guesses spread over many addresses. The counts live in memory only.

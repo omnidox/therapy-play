@@ -7,7 +7,9 @@ export type ServerConfig = {
   hostPasscode?: string;
 };
 
+// A real site needs a long passcode. A demo site (made-up content only) may use a shorter one.
 export const MIN_PASSCODE_LENGTH = 12;
+export const MIN_DEMO_PASSCODE_LENGTH = 6;
 
 // allowOpen is for local development only (the dev scripts pass --allow-open):
 // it lets the server run without a host passcode.
@@ -16,8 +18,12 @@ export function readConfig(env: Record<string, string | undefined>, allowOpen = 
   const passcode =
     env.HOST_PASSCODE === undefined || env.HOST_PASSCODE === "" ? undefined : env.HOST_PASSCODE;
 
-  if (passcode !== undefined && passcode.length < MIN_PASSCODE_LENGTH) {
-    throw new Error(`HOST_PASSCODE must be at least ${MIN_PASSCODE_LENGTH} characters long.`);
+  const minimum = demo ? MIN_DEMO_PASSCODE_LENGTH : MIN_PASSCODE_LENGTH;
+  if (passcode !== undefined && passcode.length < minimum) {
+    // Say how long it is, never what it is.
+    throw new Error(
+      `HOST_PASSCODE must be at least ${minimum} characters long${demo ? " (a demo site)" : ""}; the one set has ${passcode.length}.`,
+    );
   }
   // Fail closed: a real site must never run with room creation open to everyone.
   if (passcode === undefined && !demo && !allowOpen) {
