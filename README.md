@@ -74,6 +74,8 @@ The port comes from the `PORT` setting (default 3001). Any computer or hosting s
 
 ## Deploy a demo (Render, free)
 
+**Try it:** [therapy-play-demo.onrender.com](https://therapy-play-demo.onrender.com). It is a demo with made-up content only, not for real sessions, and it has no healthcare agreement. The free plan sleeps after 15 idle minutes, so the first load takes about a minute. Anyone can create a room.
+
 `render.yaml` describes a demo service. In Render: **New > Blueprint**, pick this repository, and apply. It builds with `npm ci && npm run build`, starts with `npm start`, checks `/health`, and sets `DEMO=1`, which puts a "made-up content only" banner on every page. On the free plan the service sleeps after 15 idle minutes and takes about a minute to wake, and rooms (which live in memory) end when it sleeps or restarts. Use it with made-up content only.
 
 ## Tests and checks
