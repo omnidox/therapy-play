@@ -2,6 +2,16 @@
 
 A shared Jeopardy-style game for online sessions with children. See README.md for what it does and docs/decisions for why.
 
+## Start of every session
+
+Read this file, README.md and docs/status.md. Give a 3-line status and one recommended next step. At the end of the session, update docs/status.md and finish with one next action of 10 to 30 minutes.
+
+## Working method
+
+- One topic per chat; start a new chat when the topic changes.
+- Plan first (plan mode) for real design decisions, then build. Use specific prompts ("change X in file Y"), not "look around the project".
+- Check the result for real (tests, and the browser for anything visible) before saying it works, and say plainly what was not checked.
+
 ## Before every commit
 
 - Run `npm run check` (typecheck, lint, format check, tests). The pre-commit hook runs it too; turn it on with `git config core.hooksPath .githooks`.
