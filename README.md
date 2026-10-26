@@ -2,13 +2,34 @@
 
 [![CI](https://github.com/omnidox/therapy-play/actions/workflows/ci.yml/badge.svg)](https://github.com/omnidox/therapy-play/actions/workflows/ci.yml)
 
-A shared Jeopardy-style game for online sessions with children. One adult opens a room and emails a link. Up to eight players join from phones, tablets or computers, and everyone sees the same board live. Nothing is stored on the server.
+Shared activities for online sessions with children, live in the browser: a Jeopardy-style game and a drag-and-drop sandtray. One adult opens a room and shares a link. Up to eight players join from phones, tablets or computers, and everyone sees the same thing at the same moment. Nothing is stored on the server.
 
 It is built to sit next to a video call, not replace it.
 
+**[Try the live demo](https://therapy-play-demo.onrender.com)** (made-up content only; the free host sleeps when idle, so the first load takes about a minute).
+
+## Tech stack
+
+| Area         | What it uses                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Front end    | React 19, TypeScript, Vite                                                                                                                                      |
+| Back end     | Node.js 22, Fastify 5, WebSockets (`@fastify/websocket`), `@fastify/static`, esbuild                                                                            |
+| Shared code  | npm workspaces: one set of message types and game rules used by both the page and the server                                                                    |
+| Testing      | Vitest, React Testing Library, axe-core (automated accessibility scans), real WebSocket test clients                                                            |
+| Code quality | strict TypeScript, ESLint, Prettier, a pre-commit hook that runs the full check                                                                                 |
+| Delivery     | GitHub Actions CI, Render (Blueprint deploy from `render.yaml`)                                                                                                 |
+| Techniques   | server-authoritative state, in-memory rooms, WebSocket reconnect with heartbeat, rate limiting, pointer-event drag and drop, keyboard and screen reader support |
+| Process      | decision records in `docs/decisions/`; built with AI assistance (see the last sections)                                                                         |
+
 ## Screenshots
 
-The host's screen (a game in progress with three players and scoring on), then a player's phone screen and a clue. All content is made up: the example board and the names Robin, Kai and Sam.
+**The sandtray.** Two or more people drag figures from the shelf onto the sand and move them around, live; each screen sees every move as it happens. (The figures here are simple placeholder shapes drawn for the project.)
+
+![The sandtray: a sand-colored tray with a few figures placed on it and a shelf of figures below](docs/images/sandtray-host.jpg)
+
+![A short recording of figures being dragged onto the sandtray](docs/images/sandtray-demo.gif)
+
+**The Jeopardy game.** The host's screen (a game in progress with three players and scoring on), then a player's phone screen and a clue. All content is made up: the example board and the names Robin, Kai and Sam.
 
 ![The host's screen: players and controls on the left, the board and scores on the right](docs/images/host-screen.jpg)
 
