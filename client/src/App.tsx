@@ -3,6 +3,7 @@ import type { CreateRoomResponse } from "@therapy-play/shared";
 import { Board } from "./Board";
 import { DemoBanner } from "./DemoBanner";
 import { Editor } from "./Editor";
+import { Sandtray } from "./Sandtray";
 import { JoinForm, OwnNames, PlayersPanel } from "./Players";
 import { purgeOldKeys, readKey, saveKey } from "./storage";
 import { useConfig } from "./useConfig";
@@ -180,8 +181,16 @@ export function Home({ go = (path: string) => location.assign(path) }: { go?: (p
   );
 }
 
-// Ending a room cannot be undone, so it takes two clicks.
-function EndRoomButton({ onEnd }: { onEnd: () => void }) {
+// Ending a room, or clearing the tray, cannot be undone, so it takes two clicks.
+function ConfirmButton({
+  label,
+  armedLabel,
+  onConfirm,
+}: {
+  label: string;
+  armedLabel: string;
+  onConfirm: () => void;
+}) {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (!armed) return;
@@ -196,11 +205,15 @@ function EndRoomButton({ onEnd }: { onEnd: () => void }) {
         color: armed ? "white" : "#b3261e",
         background: armed ? "#b3261e" : "white",
       }}
-      onClick={() => (armed ? onEnd() : setArmed(true))}
+      onClick={() => (armed ? onConfirm() : setArmed(true))}
     >
-      {armed ? "Click again to end the room" : "End room"}
+      {armed ? armedLabel : label}
     </button>
   );
+}
+
+function EndRoomButton({ onEnd }: { onEnd: () => void }) {
+  return <ConfirmButton label="End room" armedLabel="Click again to end the room" onConfirm={onEnd} />;
 }
 
 function HostView({ code }: { code: string }) {
@@ -256,6 +269,23 @@ function HostView({ code }: { code: string }) {
             <PlayersPanel state={room.state} mine={room.mine} notice={room.notice} send={room.send} />
           )}
 
+          {room.state && (
+            <fieldset className="activity-switch">
+              <legend>Activity</legend>
+              {(["jeopardy", "sandtray"] as const).map((activity) => (
+                <label key={activity}>
+                  <input
+                    type="radio"
+                    name="activity"
+                    checked={room.state?.activity === activity}
+                    onChange={() => room.send({ type: "setActivity", value: activity })}
+                  />{" "}
+                  {activity === "jeopardy" ? "Jeopardy" : "Sandtray"}
+                </label>
+              ))}
+            </fieldset>
+          )}
+
           <label>
             <input
               type="checkbox"
@@ -265,24 +295,35 @@ function HostView({ code }: { code: string }) {
             I admit each screen before it comes in
           </label>
 
-          <label>
-            <input
-              type="checkbox"
-              checked={room.game?.scoring.enabled ?? false}
-              onChange={(e) => room.send({ type: "setScoring", value: e.target.checked })}
-            />{" "}
-            Keep score
-          </label>
+          {room.state?.activity === "sandtray" ? (
+            <ConfirmButton
+              label="Clear tray"
+              armedLabel="Click again to clear the tray"
+              onConfirm={() => room.send({ type: "clearTray" })}
+            />
+          ) : (
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={room.game?.scoring.enabled ?? false}
+                  onChange={(e) => room.send({ type: "setScoring", value: e.target.checked })}
+                />{" "}
+                Keep score
+              </label>
 
-          {room.board && (
-            <button style={button} onClick={() => setEditing(true)}>
-              Edit board
-            </button>
+              {room.board && (
+                <button style={button} onClick={() => setEditing(true)}>
+                  Edit board
+                </button>
+              )}
+            </>
           )}
         </aside>
 
-        <section className="board-area" aria-label="Game">
-          {room.game && room.state && (
+        <section className="board-area" aria-label="Activity">
+          {room.state?.activity === "sandtray" && room.tray && <Sandtray tray={room.tray} send={room.send} />}
+          {room.state?.activity !== "sandtray" && room.game && room.state && (
             <Board
               game={room.game}
               role="host"
@@ -351,7 +392,17 @@ function ChildView({ code }: { code: string }) {
       <main style={page}>
         <ReconnectBanner show={room.reconnecting} />
         <OwnNames state={room.state} mine={room.mine} send={room.send} />
-        <Board game={room.game} role="child" players={room.state.players} mine={room.mine} send={room.send} />
+        {room.state.activity === "sandtray" && room.tray ? (
+          <Sandtray tray={room.tray} send={room.send} />
+        ) : (
+          <Board
+            game={room.game}
+            role="child"
+            players={room.state.players}
+            mine={room.mine}
+            send={room.send}
+          />
+        )}
       </main>
     );
   }

@@ -5,6 +5,7 @@ import type {
   ClientMessage,
   ErrorReason,
   GameView,
+  TrayView,
   RoomState,
   ServerMessage,
 } from "@therapy-play/shared";
@@ -16,6 +17,7 @@ export type RoomView = {
   state: RoomState | null;
   mine: number[]; // player ids on this screen
   game: GameView | null;
+  tray: TrayView | null; // the sandtray's figures
   board: BoardData | null; // the full board; the host only
   ended: boolean;
   error: ErrorReason | null; // the room could not be joined (or this seat was removed)
@@ -46,6 +48,7 @@ export function useRoom(code: string, join: JoinParams | null): RoomView {
   const [state, setState] = useState<RoomState | null>(null);
   const [mine, setMine] = useState<number[]>([]);
   const [game, setGame] = useState<GameView | null>(null);
+  const [tray, setTray] = useState<TrayView | null>(null);
   const [board, setBoard] = useState<BoardData | null>(null);
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState<ErrorReason | null>(null);
@@ -121,6 +124,7 @@ export function useRoom(code: string, join: JoinParams | null): RoomView {
           setState(msg.state);
           setMine(msg.mine);
         } else if (msg.type === "game") setGame(msg.game);
+        else if (msg.type === "tray") setTray(msg.tray);
         else if (msg.type === "board") setBoard(msg.board);
         else if (msg.type === "ended") {
           stopped = true;
@@ -189,5 +193,5 @@ export function useRoom(code: string, join: JoinParams | null): RoomView {
     if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
   }, []);
 
-  return { role, state, mine, game, board, ended, error, notice, reconnecting, send };
+  return { role, state, mine, game, tray, board, ended, error, notice, reconnecting, send };
 }
