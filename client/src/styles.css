@@ -258,7 +258,10 @@ textarea:focus-visible {
 
 .sand {
   position: relative;
-  width: 100%;
+  /* As wide as the space allows, but never so tall that the shelf below is pushed off the screen. */
+  width: min(100%, calc((100vh - 360px) * 1.3333));
+  min-width: 280px;
+  margin: 0 auto;
   overflow: hidden;
   background-color: #ecd9a8;
   background-image: radial-gradient(#dcc48a 1px, transparent 1.4px);

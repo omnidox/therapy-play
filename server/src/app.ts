@@ -301,7 +301,12 @@ export async function buildApp(
         return broadcastState(code);
       }
 
-      if (msg.type === "placeFigure" || msg.type === "moveItem" || msg.type === "removeItem") {
+      if (
+        msg.type === "placeFigure" ||
+        msg.type === "moveItem" ||
+        msg.type === "nudgeItem" ||
+        msg.type === "removeItem"
+      ) {
         if (!trayBucket.take()) return; // too many too fast: ignore this one
         const result = store.trayAct(code, connId, msg);
         if (!result.ok) return send(socket, { type: "error", reason: result.reason });

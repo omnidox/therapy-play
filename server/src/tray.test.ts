@@ -1,6 +1,15 @@
 import { beforeEach, expect, test } from "vitest";
 import { FIGURES, TRAY, clampPosition } from "@therapy-play/shared";
-import { clearTray, emptyTray, moveItem, placeFigure, removeItem, toView, type TrayState } from "./tray.js";
+import {
+  clearTray,
+  emptyTray,
+  moveItem,
+  nudgeItem,
+  placeFigure,
+  removeItem,
+  toView,
+  type TrayState,
+} from "./tray.js";
 
 let tray: TrayState;
 const ANIMAL = "animal-1";
@@ -72,4 +81,19 @@ test("the view is a copy: changing it does not change the tray", () => {
   const view = toView(tray);
   view.items[0].x = 0.9;
   expect(toView(tray).items[0].x).toBe(0.5);
+});
+
+test("nudges add up from where the figure is now, stay inside the tray, and are limited in size", () => {
+  placeFigure(tray, ANIMAL, 0.5, 0.5);
+  nudgeItem(tray, 1, 0.02, 0);
+  nudgeItem(tray, 1, 0.02, 0);
+  nudgeItem(tray, 1, 0.02, 0);
+  expect(toView(tray).items[0].x).toBeCloseTo(0.56, 5); // three quick presses, three steps
+  nudgeItem(tray, 1, 5, 0); // a huge step is cut down to a fifth of the tray
+  expect(toView(tray).items[0].x).toBeCloseTo(0.76, 5);
+  nudgeItem(tray, 1, 0.2, 0);
+  nudgeItem(tray, 1, 0.2, 0);
+  expect(toView(tray).items[0].x).toBeLessThan(1); // never leaves the tray
+  expect(nudgeItem(tray, 99, 0.1, 0.1)).toBe(false);
+  expect(nudgeItem(tray, 1, "a", 0)).toBe(false);
 });

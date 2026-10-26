@@ -14,6 +14,7 @@ import {
   clearTray,
   emptyTray,
   moveItem,
+  nudgeItem,
   placeFigure,
   removeItem,
   toView as trayToView,
@@ -323,6 +324,7 @@ export class RoomStore {
     this.touch(room);
     if (action.type === "placeFigure") placeFigure(room.tray, action.figureId, action.x, action.y);
     else if (action.type === "moveItem") moveItem(room.tray, action.itemId, action.x, action.y);
+    else if (action.type === "nudgeItem") nudgeItem(room.tray, action.itemId, action.dx, action.dy);
     else if (action.type === "removeItem") removeItem(room.tray, action.itemId);
     return { ok: true };
   }

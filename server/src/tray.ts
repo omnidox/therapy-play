@@ -27,6 +27,16 @@ export function moveItem(tray: TrayState, itemId: unknown, x: unknown, y: unknow
   return true;
 }
 
+// Moves a figure by a small step from where it is now (the arrow keys use this, so quick presses
+// add up even before the server has answered the first one). A step is limited to a fifth of the tray.
+export function nudgeItem(tray: TrayState, itemId: unknown, dx: unknown, dy: unknown): boolean {
+  if (!isNumber(dx) || !isNumber(dy)) return false;
+  const item = tray.items.find((i) => i.id === itemId);
+  if (!item) return false;
+  const limit = (n: number) => Math.min(0.2, Math.max(-0.2, n));
+  return moveItem(tray, itemId, item.x + limit(dx), item.y + limit(dy));
+}
+
 export function removeItem(tray: TrayState, itemId: unknown): boolean {
   const index = tray.items.findIndex((item) => item.id === itemId);
   if (index === -1) return false;

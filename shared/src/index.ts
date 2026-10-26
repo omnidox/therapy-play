@@ -65,6 +65,7 @@ export type GameAction =
 export type TrayAction =
   | { type: "placeFigure"; figureId: string; x: number; y: number }
   | { type: "moveItem"; itemId: number; x: number; y: number }
+  | { type: "nudgeItem"; itemId: number; dx: number; dy: number } // move by a small step, from where it is now
   | { type: "removeItem"; itemId: number };
 
 export type ClientMessage =

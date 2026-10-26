@@ -86,9 +86,10 @@ test("arrow keys move a figure, Shift moves it further, Delete puts it away", as
   const figure = screen.getByRole("button", { name: /Animal figure 1/ });
   figure.focus();
   await user.keyboard("{ArrowRight}");
-  expect(send).toHaveBeenLastCalledWith({ type: "moveItem", itemId: 1, x: 0.32, y: 0.4 });
+  expect(send).toHaveBeenLastCalledWith({ type: "nudgeItem", itemId: 1, dx: 0.02, dy: 0 });
   await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
-  expect(send.mock.calls.at(-1)![0].y).toBeCloseTo(0.5, 5);
+  expect(send.mock.calls.at(-1)![0]).toMatchObject({ type: "nudgeItem", itemId: 1, dx: 0 });
+  expect(send.mock.calls.at(-1)![0].dy).toBeCloseTo(0.1, 5);
   await user.keyboard("{Delete}");
   expect(send).toHaveBeenLastCalledWith({ type: "removeItem", itemId: 1 });
 });
@@ -162,4 +163,33 @@ test("a full tray says so and stops accepting figures", () => {
 test("the sandtray has no accessibility problems", async () => {
   const { container } = render(<Sandtray tray={withTwo} send={() => {}} />);
   expect(await accessibilityProblems(container)).toEqual([]);
+});
+
+test("a figure keeps keyboard focus when it moves to the front, so arrow keys can be held down", () => {
+  const first: TrayView = {
+    items: [
+      { id: 1, figureId: "animal-1", x: 0.3, y: 0.4 },
+      { id: 2, figureId: "person-2", x: 0.7, y: 0.6 },
+    ],
+  };
+  const { rerender } = render(<Sandtray tray={first} send={() => {}} />);
+  const figure = screen.getByRole("button", { name: /Animal figure 1/ });
+  figure.focus();
+  // The server moved figure 1 to the front: it is now last in the list, and a little to the right.
+  rerender(
+    <Sandtray
+      tray={{
+        items: [
+          { id: 2, figureId: "person-2", x: 0.7, y: 0.6 },
+          { id: 1, figureId: "animal-1", x: 0.32, y: 0.4 },
+        ],
+      }}
+      send={() => {}}
+    />,
+  );
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: /Animal figure 1/ }));
+  expect(screen.getByRole("button", { name: /Animal figure 1/ })).toBe(figure); // the very same element
+  expect(Number(figure.style.zIndex)).toBeGreaterThan(
+    Number(screen.getByRole("button", { name: /Person figure 2/ }).style.zIndex),
+  );
 });

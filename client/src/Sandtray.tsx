@@ -159,7 +159,7 @@ export function Sandtray({ tray, send }: Props) {
     if (moves[e.key]) {
       e.preventDefault();
       const [dx, dy] = moves[e.key];
-      send({ type: "moveItem", itemId: item.id, x: item.x + dx, y: item.y + dy });
+      send({ type: "nudgeItem", itemId: item.id, dx, dy });
     } else if (e.key === "Delete" || e.key === "Backspace") {
       e.preventDefault();
       send({ type: "removeItem", itemId: item.id });
@@ -216,33 +216,41 @@ export function Sandtray({ tray, send }: Props) {
         onClick={trayClick}
         style={{ aspectRatio: String(TRAY.aspect) }}
       >
-        {tray.items.map((item) => {
-          const figure = findFigure(item.figureId);
-          if (!figure) return null;
-          const pos = dragging?.itemId === item.id ? dragging : item;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              data-item={item.id}
-              className={`sand-figure${selected === item.id ? " selected" : ""}${dragging?.itemId === item.id ? " dragging" : ""}`}
-              aria-label={`${figure.alt}, ${word(pos.x, "left", "right")}, ${word(pos.y, "top", "bottom")}`}
-              aria-pressed={selected === item.id}
-              style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%`, width: `${TRAY.figureWidth * 100}%` }}
-              onPointerDown={(e) => itemDown(e, item)}
-              onPointerMove={(e) => itemMove(e, item)}
-              onPointerUp={(e) => itemUp(e, item)}
-              onPointerCancel={() => {
-                dragStart.current = null;
-                setDragging(null);
-                setOverShelf(false);
-              }}
-              onKeyDown={(e) => itemKey(e, item)}
-            >
-              <img src={`/figures/${figure.file}`} alt="" draggable={false} />
-            </button>
-          );
-        })}
+        {[...tray.items]
+          .sort((a, b) => a.id - b.id)
+          .map((item) => {
+            const figure = findFigure(item.figureId);
+            if (!figure) return null;
+            const pos = dragging?.itemId === item.id ? dragging : item;
+            const layer = dragging?.itemId === item.id ? tray.items.length + 1 : tray.items.indexOf(item) + 1;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-item={item.id}
+                className={`sand-figure${selected === item.id ? " selected" : ""}${dragging?.itemId === item.id ? " dragging" : ""}`}
+                aria-label={`${figure.alt}, ${word(pos.x, "left", "right")}, ${word(pos.y, "top", "bottom")}`}
+                aria-pressed={selected === item.id}
+                style={{
+                  left: `${pos.x * 100}%`,
+                  top: `${pos.y * 100}%`,
+                  width: `${TRAY.figureWidth * 100}%`,
+                  zIndex: layer,
+                }}
+                onPointerDown={(e) => itemDown(e, item)}
+                onPointerMove={(e) => itemMove(e, item)}
+                onPointerUp={(e) => itemUp(e, item)}
+                onPointerCancel={() => {
+                  dragStart.current = null;
+                  setDragging(null);
+                  setOverShelf(false);
+                }}
+                onKeyDown={(e) => itemKey(e, item)}
+              >
+                <img src={`/figures/${figure.file}`} alt="" draggable={false} />
+              </button>
+            );
+          })}
       </div>
 
       <div ref={shelfRef} className={`shelf${overShelf ? " drop" : ""}`}>

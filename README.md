@@ -24,6 +24,7 @@ The host's screen (a game in progress with three players and scoring on), then a
 - **Waiting room.** Each new screen waits until the host admits it (this can be switched off).
 - **Up to 8 players.** The host picks the number (1 to 8). One screen can hold up to 4 players, for example a parent and child sharing a phone. The host can play too. Players can rename themselves.
 - **A live board.** Any admitted player can open a tile. Questions and answers are sent only when a tile is opened. **Show answer**, **Done** (the tile is used up) and **Put back** (it stays available) work for everyone.
+- **A sandtray, too.** The host can switch the room to a shared sandtray: a tray of sand with a shelf of figures below it. Everyone can drag figures in, move them around and put them away, live; the host can clear the tray. It works with a finger, a mouse or a keyboard. The figures are a small placeholder set for now.
 - **Scoring is optional.** Only the host can switch it on and award points, one player at a time.
 - **Editable boards.** The host edits categories, questions, answers and points, starts from three placeholder example boards, and saves or loads a board as a file on their own device. The server never stores boards.
 - **Phone first for players, computer first for the host.** The player's screen is built for a phone held upright. The host's screen is a two-column layout that fits in half a laptop window next to a video call.
@@ -100,7 +101,7 @@ runs, in order: the TypeScript check, ESLint, a Prettier format check, and all t
 ## Privacy: what it stores and does not
 
 - The server keeps rooms **in memory only**. There is no database, no accounts, and no analytics. The server writes no logs about rooms or people.
-- A room's board, scores and player names exist only while the room does.
+- A room's board, scores, player names and the positions of sandtray figures exist only while the room does. Players can only use figures from a fixed list; nothing they type or upload is stored or shown there.
 - Each device keeps two random codes for a room (the host's key and a player's seat code) so a closed browser can return. They identify nobody, are removed when the room ends, and expire after a day.
 - Boards are saved only as files the host chooses to download.
 
