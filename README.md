@@ -23,11 +23,11 @@ It is built to sit next to a video call, not replace it.
 
 ## Screenshots
 
-**The sandtray.** Two or more people drag figures from the shelf onto the sand and move them around, live; each screen sees every move as it happens. (The figures here are simple placeholder shapes drawn for the project.)
+**The sandtray, live on two screens.** The host (left) and a child on a phone-sized screen (right) share one tray. Figures dragged onto the sand on either screen appear on the other as they move. (The recording shows two real connections to one server, side by side in one page. The figures are simple placeholder shapes drawn for the project.)
 
-![The sandtray: a sand-colored tray with a few figures placed on it and a shelf of figures below](docs/images/sandtray-host.jpg)
+![The host's screen and a child's phone screen, both showing the same sandtray with four figures on it](docs/images/sandtray-live-sync.jpg)
 
-![A short recording of figures being dragged onto the sandtray](docs/images/sandtray-demo.gif)
+![A short recording: figures are dragged onto the tray on one screen and appear on the other](docs/images/sandtray-live-sync.gif)
 
 **The Jeopardy game.** The host's screen (a game in progress with three players and scoring on), then a player's phone screen and a clue. All content is made up: the example board and the names Robin, Kai and Sam.
 
