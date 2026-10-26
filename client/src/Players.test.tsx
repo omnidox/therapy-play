@@ -11,6 +11,7 @@ afterEach(() => {
 });
 
 const state: RoomState = {
+  activity: "jeopardy",
   admitRequired: true,
   maxPlayers: 4,
   hostPlays: true,

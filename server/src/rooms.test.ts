@@ -254,3 +254,54 @@ test("rooms idle for 30 minutes are removed; activity resets the clock", () => {
   expect(store.sweepIdle()).toEqual([code]);
   expect(store.has(code)).toBe(false);
 });
+
+test("a new room shows Jeopardy; only the host switches activity, and each keeps its own state", () => {
+  host();
+  store.setMaxPlayers(code, "h", 2);
+  store.join(code, "c");
+  store.admit(code, "h");
+  expect(store.state(code)!.activity).toBe("jeopardy");
+  expect(store.setActivity(code, "c", "sandtray")).toEqual({ ok: false, reason: "not_host" });
+  expect(store.setActivity(code, "h", "chess")).toEqual({ ok: false, reason: "bad_message" });
+  expect(store.setActivity(code, "h", "sandtray")).toEqual({ ok: true });
+  expect(store.state(code)!.activity).toBe("sandtray");
+  store.trayAct(code, "c", { type: "placeFigure", figureId: "animal-1", x: 0.5, y: 0.5 });
+  store.setActivity(code, "h", "jeopardy");
+  store.setActivity(code, "h", "sandtray");
+  expect(store.trayView(code)!.items).toHaveLength(1); // the tray survived the switch
+});
+
+test("the host and an admitted screen can use the tray; a waiting screen cannot", () => {
+  host();
+  store.join(code, "c"); // waiting: admit is required by default
+  const place = { type: "placeFigure", figureId: "animal-1", x: 0.5, y: 0.5 } as const;
+  expect(store.trayAct(code, "c", place)).toEqual({ ok: false, reason: "not_allowed" });
+  expect(store.trayAct(code, "h", place)).toEqual({ ok: true });
+  store.admit(code, "h");
+  expect(store.trayAct(code, "c", { type: "moveItem", itemId: 1, x: 0.2, y: 0.3 })).toEqual({ ok: true });
+  expect(store.trayView(code)!.items[0]).toMatchObject({ id: 1, x: 0.2, y: 0.3 });
+  expect(store.trayAct(code, "c", { type: "removeItem", itemId: 1 })).toEqual({ ok: true });
+  expect(store.trayView(code)!.items).toHaveLength(0);
+});
+
+test("only the host clears the tray", () => {
+  host();
+  store.join(code, "c");
+  store.admit(code, "h");
+  store.trayAct(code, "c", { type: "placeFigure", figureId: "animal-1", x: 0.5, y: 0.5 });
+  expect(store.clearTray(code, "c")).toEqual({ ok: false, reason: "not_host" });
+  expect(store.trayView(code)!.items).toHaveLength(1);
+  expect(store.clearTray(code, "h")).toEqual({ ok: true });
+  expect(store.trayView(code)!.items).toHaveLength(0);
+});
+
+test("tray actions that do not apply are ignored, not errors", () => {
+  host();
+  const nothing = { type: "removeItem", itemId: 99 } as const;
+  expect(store.trayAct(code, "h", nothing)).toEqual({ ok: true });
+  expect(store.trayAct(code, "h", { type: "placeFigure", figureId: "nope", x: 0.5, y: 0.5 })).toEqual({
+    ok: true,
+  });
+  expect(store.trayView(code)!.items).toHaveLength(0);
+  expect(store.trayView("missing")).toBeNull();
+});

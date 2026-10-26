@@ -1,6 +1,24 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { PLAYER_LIMITS, cleanName, defaultName, feelingsBoard, validateBoard } from "@therapy-play/shared";
-import type { BoardData, ErrorReason, GameAction, GameView, RoomState } from "@therapy-play/shared";
+import type {
+  Activity,
+  BoardData,
+  ErrorReason,
+  GameAction,
+  GameView,
+  RoomState,
+  TrayAction,
+  TrayView,
+} from "@therapy-play/shared";
+import {
+  clearTray,
+  emptyTray,
+  moveItem,
+  placeFigure,
+  removeItem,
+  toView as trayToView,
+  type TrayState,
+} from "./tray.js";
 import {
   adjustScore,
   applyAction,
@@ -40,6 +58,8 @@ type Room = {
   players: Map<number, Player>;
   nextPlayerId: number;
   game: GameState;
+  activity: Activity; // what the room is showing now; the host switches it
+  tray: TrayState; // the sandtray's figures; kept while the room lives, never stored
   lastActivity: number;
 };
 
@@ -78,6 +98,8 @@ export class RoomStore {
       players: new Map(),
       nextPlayerId: 1,
       game: newGame(structuredClone(feelingsBoard)),
+      activity: "jeopardy",
+      tray: emptyTray(),
       lastActivity: this.now(),
     };
     this.rooms.set(room.code, room);
@@ -283,6 +305,41 @@ export class RoomStore {
     return this.rooms.get(code)?.game.board ?? null;
   }
 
+  // Host only: which activity the room shows. Each activity keeps its own state.
+  setActivity(code: string, connId: string, value: unknown): Result {
+    const found = this.hostRoom(code, connId);
+    if (!found.ok) return found;
+    if (value !== "jeopardy" && value !== "sandtray") return { ok: false, reason: "bad_message" };
+    found.room.activity = value;
+    return { ok: true };
+  }
+
+  // Anyone allowed to play may place, move or put away figures. An action that does not
+  // apply (unknown figure, full tray, no such figure) is ignored, not an error.
+  trayAct(code: string, connId: string, action: TrayAction): Result {
+    const room = this.rooms.get(code);
+    if (!room) return { ok: false, reason: "not_found" };
+    if (!this.canPlay(code, connId)) return { ok: false, reason: "not_allowed" };
+    this.touch(room);
+    if (action.type === "placeFigure") placeFigure(room.tray, action.figureId, action.x, action.y);
+    else if (action.type === "moveItem") moveItem(room.tray, action.itemId, action.x, action.y);
+    else if (action.type === "removeItem") removeItem(room.tray, action.itemId);
+    return { ok: true };
+  }
+
+  // Host only.
+  clearTray(code: string, connId: string): Result {
+    const found = this.hostRoom(code, connId);
+    if (!found.ok) return found;
+    clearTray(found.room.tray);
+    return { ok: true };
+  }
+
+  trayView(code: string): TrayView | null {
+    const room = this.rooms.get(code);
+    return room ? trayToView(room.tray) : null;
+  }
+
   gameView(code: string): GameView | null {
     const room = this.rooms.get(code);
     return room ? toView(room.game) : null;
@@ -299,6 +356,7 @@ export class RoomStore {
     const room = this.rooms.get(code);
     if (!room) return null;
     return {
+      activity: room.activity,
       admitRequired: room.admitRequired,
       maxPlayers: room.maxPlayers,
       hostPlays: room.hostPlayerId !== null,

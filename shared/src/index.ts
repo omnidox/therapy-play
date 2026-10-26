@@ -1,10 +1,15 @@
 // Messages shared by the server and the client.
 
 import type { BoardData } from "./board.js";
+import type { TrayView } from "./figures.js";
 
 export * from "./board.js";
 export * from "./starterBoards.js";
 export * from "./players.js";
+export * from "./figures.js";
+
+// The room shows one activity at a time; the host switches between them.
+export type Activity = "jeopardy" | "sandtray";
 
 export type ScreenStatus = "waiting" | "admitted" | "away";
 export type PlayerInfo = { id: number; name: string };
@@ -13,6 +18,7 @@ export type ScreenInfo = { id: string; status: ScreenStatus; playerIds: number[]
 // A screen is one device; it holds one or more players. The therapist's own player,
 // if she plays, is in `players` but on no screen.
 export type RoomState = {
+  activity: Activity;
   admitRequired: boolean;
   maxPlayers: number;
   hostPlays: boolean;
@@ -55,6 +61,12 @@ export type GameAction =
   | { type: "closeTile" } // done: the tile is used up
   | { type: "putBack" }; // close the clue and leave the tile available
 
+// Anyone allowed to play may place, move or put away figures.
+export type TrayAction =
+  | { type: "placeFigure"; figureId: string; x: number; y: number }
+  | { type: "moveItem"; itemId: number; x: number; y: number }
+  | { type: "removeItem"; itemId: number };
+
 export type ClientMessage =
   | { type: "join"; code: string; hostKey?: string; token?: string; names?: string[] }
   | { type: "admit"; screenId?: string } // no screenId = admit everyone waiting
@@ -69,12 +81,16 @@ export type ClientMessage =
   | { type: "adjustScore"; playerId: number; delta: number }
   | { type: "resetScores" }
   | { type: "ping" } // keeps the connection checked; the server answers with "pong"
+  | { type: "setActivity"; value: Activity } // host only
+  | { type: "clearTray" } // host only
+  | TrayAction
   | GameAction;
 
 export type ServerMessage =
   | { type: "joined"; role: "host" | "child"; token?: string } // token: only to a new screen
   | { type: "room"; state: RoomState; mine: number[] } // mine: player ids on the receiving screen
   | { type: "game"; game: GameView }
+  | { type: "tray"; tray: TrayView } // the sandtray, to people allowed to play
   | { type: "board"; board: BoardData } // the full board, sent to the host only
   | { type: "pong" }
   | { type: "ended" }
