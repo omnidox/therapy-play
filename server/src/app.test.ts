@@ -466,3 +466,61 @@ test("there is a ceiling on live rooms, and a full server says it is busy", asyn
     await server.close();
   }
 });
+
+test("the sandtray: the host switches activity, an admitted player moves figures, everyone sees them", async () => {
+  const { code, hostKey } = await createRoom();
+  const host = connect();
+  await host.send({ type: "join", code, hostKey });
+  const child = connect();
+  await child.send({ type: "join", code });
+  await child.next((m) => m.type === "room" && m.state.screens[0]?.status === "waiting");
+  expect(child.seen.filter((m) => m.type === "tray")).toHaveLength(0); // a waiting screen gets no tray
+
+  await host.send({ type: "admit" });
+  await child.next((m) => m.type === "tray");
+
+  // Only the host switches the activity.
+  await child.send({ type: "setActivity", value: "sandtray" });
+  expect(await child.next((m) => m.type === "error" && m.reason === "not_host")).toBeTruthy();
+  await host.send({ type: "setActivity", value: "sandtray" });
+  for (const screen of [host, child]) {
+    await screen.next((m) => m.type === "room" && m.state.activity === "sandtray");
+  }
+
+  // The child places and moves a figure; the host sees both changes.
+  await child.send({ type: "placeFigure", figureId: "animal-1", x: 0.3, y: 0.4 });
+  await host.next((m) => m.type === "tray" && m.tray.items.length === 1 && m.tray.items[0].x === 0.3);
+  await child.send({ type: "moveItem", itemId: 1, x: 0.6, y: 0.5 });
+  await host.next((m) => m.type === "tray" && m.tray.items[0]?.x === 0.6);
+
+  // A figure that is not in the library is refused, and an off-tray position is pulled inside.
+  await child.send({ type: "placeFigure", figureId: "../../etc", x: 0.5, y: 0.5 });
+  await child.send({ type: "moveItem", itemId: 1, x: 50, y: -50 });
+  const pulledIn = await host.next(
+    (m) =>
+      m.type === "tray" && m.tray.items[0] !== undefined && m.tray.items[0].x < 1 && m.tray.items[0].x > 0.9,
+  );
+  expect(pulledIn.type === "tray" && pulledIn.tray.items).toHaveLength(1);
+
+  // Only the host clears the tray.
+  await child.send({ type: "clearTray" });
+  expect(await child.next((m) => m.type === "error" && m.reason === "not_host")).toBeTruthy();
+  await host.send({ type: "clearTray" });
+  await child.next((m) => m.type === "tray" && m.tray.items.length === 0);
+  host.close();
+  child.close();
+});
+
+test("a returning screen is sent the tray as soon as it is back", async () => {
+  const { code, hostKey } = await createRoom();
+  const host = connect();
+  await host.send({ type: "join", code, hostKey });
+  await host.send({ type: "placeFigure", figureId: "person-2", x: 0.5, y: 0.5 });
+  await host.next((m) => m.type === "tray" && m.tray.items.length === 1);
+  const again = connect();
+  await again.send({ type: "join", code, hostKey });
+  const sent = await again.next((m) => m.type === "tray");
+  expect(sent.type === "tray" && sent.tray.items).toHaveLength(1);
+  host.close();
+  again.close();
+});

@@ -44,3 +44,28 @@ export class AttemptLimiter {
     return times.filter((t) => t > cutoff);
   }
 }
+
+// A small allowance that refills over time. Used to drop a flood of messages from one connection
+// (for example a script moving figures thousands of times a second) without bothering a person.
+export class TokenBucket {
+  private tokens: number;
+  private last: number;
+
+  constructor(
+    private now: () => number = Date.now,
+    private options: { capacity: number; perSecond: number } = { capacity: 60, perSecond: 40 },
+  ) {
+    this.tokens = options.capacity;
+    this.last = now();
+  }
+
+  // True if the message may go ahead; false if the connection has used up its allowance.
+  take(): boolean {
+    const elapsed = (this.now() - this.last) / 1000;
+    this.last = this.now();
+    this.tokens = Math.min(this.options.capacity, this.tokens + elapsed * this.options.perSecond);
+    if (this.tokens < 1) return false;
+    this.tokens -= 1;
+    return true;
+  }
+}

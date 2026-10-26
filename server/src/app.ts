@@ -10,7 +10,7 @@ import type {
   ServerMessage,
 } from "@therapy-play/shared";
 import { RoomStore } from "./rooms.js";
-import { AttemptLimiter } from "./throttle.js";
+import { AttemptLimiter, TokenBucket } from "./throttle.js";
 
 type Socket = { send(data: string): void; close(): void };
 
@@ -82,10 +82,24 @@ export async function buildApp(
   const broadcastState = (code: string) => {
     const state = store.state(code);
     const game = store.gameView(code);
-    if (!state || !game) return;
+    const tray = store.trayView(code);
+    if (!state || !game || !tray) return;
     for (const [connId, socket] of sockets.get(code)?.entries() ?? []) {
       send(socket, { type: "room", state, mine: store.mine(code, connId) });
-      if (store.canPlay(code, connId)) send(socket, { type: "game", game });
+      if (store.canPlay(code, connId)) {
+        send(socket, { type: "game", game });
+        send(socket, { type: "tray", tray });
+      }
+    }
+  };
+
+  // The sandtray changes often while someone drags, so it goes out on its own,
+  // without resending the whole room.
+  const broadcastTray = (code: string) => {
+    const tray = store.trayView(code);
+    if (!tray) return;
+    for (const [connId, socket] of sockets.get(code)?.entries() ?? []) {
+      if (store.canPlay(code, connId)) send(socket, { type: "tray", tray });
     }
   };
 
@@ -181,6 +195,7 @@ export async function buildApp(
 
     // A connection that stops answering is cut, so its screen shows as disconnected soon
     // (a phone that lost its network never says goodbye).
+    const trayBucket = new TokenBucket(); // drops a flood of tray messages from this connection
     let alive = true;
     socket.on("pong", () => {
       alive = true;
@@ -278,6 +293,25 @@ export async function buildApp(
         if (!result.ok) return send(socket, { type: "error", reason: result.reason });
         sendBoardToHost(code, connId);
         return broadcastState(code);
+      }
+
+      if (msg.type === "setActivity") {
+        const result = store.setActivity(code, connId, msg.value);
+        if (!result.ok) return send(socket, { type: "error", reason: result.reason });
+        return broadcastState(code);
+      }
+
+      if (msg.type === "placeFigure" || msg.type === "moveItem" || msg.type === "removeItem") {
+        if (!trayBucket.take()) return; // too many too fast: ignore this one
+        const result = store.trayAct(code, connId, msg);
+        if (!result.ok) return send(socket, { type: "error", reason: result.reason });
+        return broadcastTray(code); // also resyncs a screen whose action was ignored
+      }
+
+      if (msg.type === "clearTray") {
+        const result = store.clearTray(code, connId);
+        if (!result.ok) return send(socket, { type: "error", reason: result.reason });
+        return broadcastTray(code);
       }
 
       if (msg.type === "end") {

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { AttemptLimiter } from "./throttle.js";
+import { AttemptLimiter, TokenBucket } from "./throttle.js";
 
 const MINUTE = 60 * 1000;
 
@@ -41,4 +41,17 @@ test("many different addresses together still hit the overall limit", () => {
   const { limiter } = make();
   for (let i = 0; i < 5; i++) limiter.record(`addr-${i}`);
   expect(limiter.blockedFor("a-new-address")).toBeGreaterThan(0);
+});
+
+test("a connection may burst, then is held to its steady rate, and recovers when it rests", () => {
+  let time = 0;
+  const bucket = new TokenBucket(() => time, { capacity: 5, perSecond: 2 });
+  for (let i = 0; i < 5; i++) expect(bucket.take()).toBe(true); // the burst
+  expect(bucket.take()).toBe(false); // used up
+  time += 500; // half a second gives one message back
+  expect(bucket.take()).toBe(true);
+  expect(bucket.take()).toBe(false);
+  time += 60_000; // a long rest refills to the capacity, no more
+  for (let i = 0; i < 5; i++) expect(bucket.take()).toBe(true);
+  expect(bucket.take()).toBe(false);
 });
